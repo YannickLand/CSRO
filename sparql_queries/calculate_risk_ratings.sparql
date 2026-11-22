@@ -46,8 +46,8 @@ CONSTRUCT {
         csro:description ?traitDescription ;
         csro:isDerivedFrom ?traitEvidence .
 
-    # Evidence for deployment traits
-    ?traitEvidence a csro:ContainerEvidence ;
+    # Artefacts for deployment traits
+    ?traitEvidence a csro:ContainerArtefact ;
         csro:description ?traitEvidenceDescription .
     
     # Scenario information with assumptions
