@@ -256,8 +256,8 @@ csro:inContext rdf:type owl:ObjectProperty ;
 ###  https://w3id.org/csro/ontology#includesAssumption
 csro:includesAssumption rdf:type owl:ObjectProperty ;
                         rdfs:domain csro:ContextScenario ;
-                        rdfs:range csro:SecurityAssumption ;
-                        rdfs:comment "Indicates that a context scenario includes a specific security assumption."@en ;
+                        rdfs:range csro:AssumptionInScenario ;
+                        rdfs:comment "Indicates that a context scenario includes a specific assumption-in-scenario instance."@en ;
                         rdfs:label "includes assumption"@en .
 
 
