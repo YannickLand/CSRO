@@ -164,6 +164,7 @@ CONSTRUCT {
 
 }
 WHERE {
+  {
     # Calculate sum of all weights for this rule to determine thresholds
     {
         SELECT ?rule (SUM(?w) AS ?totalWeight)
@@ -203,10 +204,15 @@ WHERE {
             ?assumptionWeight csro:refersToAssumption ?assumption ;
                               csro:weightValue ?weight .
 
-            # Get satisfaction states from scenario-assumption relationship
-            ?scenario csro:includesAssumption ?assumptionInScenario .
-            ?assumptionInScenario csro:forAssumption ?assumption ;
-                                  csro:hasSatisfactionState ?satisfactionState .
+            # Missing scenario-assumption assertions default to Unknown.
+            OPTIONAL {
+                ?scenario csro:includesAssumption ?scenarioAssumptionInScenario .
+                ?scenarioAssumptionInScenario csro:forAssumption ?assumption .
+                OPTIONAL {
+                    ?scenarioAssumptionInScenario csro:hasSatisfactionState ?scenarioSatisfactionState .
+                }
+            }
+            BIND(COALESCE(?scenarioSatisfactionState, csro:Unknown) AS ?satisfactionState)
 
             BIND(
                 IF(?satisfactionState = csro:Satisfied, 1.0,
@@ -234,10 +240,15 @@ WHERE {
             ?assumptionWeight csro:refersToAssumption ?assumption ;
                               csro:weightValue ?weight .
 
-            # Get satisfaction states from scenario-assumption relationship
-            ?scenario csro:includesAssumption ?assumptionInScenario .
-            ?assumptionInScenario csro:forAssumption ?assumption ;
-                                  csro:hasSatisfactionState ?satisfactionState .
+            # Missing scenario-assumption assertions default to Unknown.
+            OPTIONAL {
+                ?scenario csro:includesAssumption ?scenarioAssumptionInScenario .
+                ?scenarioAssumptionInScenario csro:forAssumption ?assumption .
+                OPTIONAL {
+                    ?scenarioAssumptionInScenario csro:hasSatisfactionState ?scenarioSatisfactionState .
+                }
+            }
+            BIND(COALESCE(?scenarioSatisfactionState, csro:Unknown) AS ?satisfactionState)
 
             BIND(
                 IF(?satisfactionState = csro:Satisfied, 1.0,
@@ -332,48 +343,6 @@ WHERE {
         }
     }
 
-    # Get all assumptions in scenario
-    OPTIONAL {
-        ?scenario csro:includesAssumption ?assumptionInScenario .
-        ?assumptionInScenario csro:forAssumption ?assumption .
-        ?assumption csro:assumptionId ?assumptionId ;
-                    csro:description ?assumptionDescription ;
-                    csro:belongsToCategory ?assumptionCategory .
-        
-        # Assumption category information
-        ?assumptionCategory rdfs:label ?categoryLabel ;
-                            csro:description ?categoryDescription .
-        
-        # Security standard sections for assumptions (granular references - optional)
-        OPTIONAL {
-            ?assumption csro:originatesFrom ?assumptionSecurityStandardSection .
-            ?assumptionSecurityStandardSection a csro:ContainerSecurityStandardSection ;
-                                               csro:belongsToStandard ?sectionParentStandard ;
-                                               csro:sectionId ?sectionId .
-            
-            # Get the parent standard information through the section
-            ?sectionParentStandard a csro:ContainerSecurityStandard ;
-                                   rdfs:label ?assumptionSecurityStandardLabel ;
-                                   csro:description ?assumptionSecurityStandardDescription .
-        }
-        
-        # Verification information for assumptions
-        OPTIONAL {
-            ?assumption csro:isVerifiableBy ?verificationTrait .
-            ?verificationTrait csro:description ?verificationTraitDescription .
-        }
-        OPTIONAL {
-            ?assumption csro:isVerifiableByAbsence ?verificationAbsenceTrait .
-            ?verificationAbsenceTrait csro:description ?verificationAbsenceTraitDescription .
-        }
-        
-        # Assumption satisfaction states
-        OPTIONAL {
-            ?assumptionInScenario csro:hasSatisfactionState ?satisfactionState .
-            ?satisfactionState csro:description ?satisfactionStateDescription .
-        }
-    }
-
     # Calculate likelihood from exploitability + exposure (for current scenario)
     OPTIONAL {
         ?currentLikelihoodRule a csro:LikelihoodCalculationRule ;
@@ -444,4 +413,59 @@ WHERE {
             }
         }
     }
+  }
+  UNION
+  {
+    # Materialise a complete profile for every known assumption in the scenario.
+    ?scenario a csro:ContextScenario ;
+              rdfs:label ?scenarioLabel ;
+              csro:description ?scenarioDescription ;
+              csro:includesComponent ?component .
+
+    ?component rdfs:label ?componentLabel ;
+               csro:description ?componentDescription .
+
+    ?assumption a csro:ContainerSecurityAssumption ;
+                csro:assumptionId ?assumptionId ;
+                csro:description ?assumptionDescription ;
+                csro:belongsToCategory ?assumptionCategory .
+
+    ?assumptionCategory rdfs:label ?categoryLabel ;
+                        csro:description ?categoryDescription .
+
+    OPTIONAL {
+        ?assumption csro:originatesFrom ?assumptionSecurityStandardSection .
+        ?assumptionSecurityStandardSection a csro:ContainerSecurityStandardSection ;
+                                           csro:belongsToStandard ?sectionParentStandard ;
+                                           csro:sectionId ?sectionId .
+        ?sectionParentStandard a csro:ContainerSecurityStandard ;
+                               rdfs:label ?assumptionSecurityStandardLabel ;
+                               csro:description ?assumptionSecurityStandardDescription .
+    }
+
+    OPTIONAL {
+        ?assumption csro:isVerifiableBy ?verificationTrait .
+        ?verificationTrait csro:description ?verificationTraitDescription .
+    }
+    OPTIONAL {
+        ?assumption csro:isVerifiableByAbsence ?verificationAbsenceTrait .
+        ?verificationAbsenceTrait csro:description ?verificationAbsenceTraitDescription .
+    }
+
+    OPTIONAL {
+        ?scenario csro:includesAssumption ?existingAssumptionInScenario .
+        ?existingAssumptionInScenario csro:forAssumption ?assumption .
+        OPTIONAL {
+            ?existingAssumptionInScenario csro:hasSatisfactionState ?existingSatisfactionState .
+        }
+    }
+    BIND(
+        COALESCE(
+            ?existingAssumptionInScenario,
+            URI(CONCAT(STR(?scenario), "_", STRAFTER(STR(?assumption), "#")))
+        ) AS ?assumptionInScenario
+    )
+    BIND(COALESCE(?existingSatisfactionState, csro:Unknown) AS ?satisfactionState)
+    ?satisfactionState csro:description ?satisfactionStateDescription .
+  }
 }

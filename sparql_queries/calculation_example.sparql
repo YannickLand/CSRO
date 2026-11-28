@@ -62,10 +62,15 @@ WHERE {
             BIND(?totalWeight / 3.0 AS ?threshold)
             BIND(2.0 * ?totalWeight / 3.0 AS ?upperThreshold)
             
-            # Get satisfaction states from scenario-assumption relationship
-            ?scenario csro:includesAssumption ?assumptionInScenario .
-            ?assumptionInScenario csro:forAssumption ?assumption ;
-                                  csro:hasSatisfactionState ?satisfactionState .
+            # Missing scenario-assumption assertions default to Unknown.
+            OPTIONAL {
+                ?scenario csro:includesAssumption ?scenarioAssumptionInScenario .
+                ?scenarioAssumptionInScenario csro:forAssumption ?assumption .
+                OPTIONAL {
+                    ?scenarioAssumptionInScenario csro:hasSatisfactionState ?scenarioSatisfactionState .
+                }
+            }
+            BIND(COALESCE(?scenarioSatisfactionState, csro:Unknown) AS ?satisfactionState)
             
             BIND(
                 IF(?satisfactionState = csro:Satisfied, 1.0,
@@ -108,10 +113,15 @@ WHERE {
             BIND(?totalWeight / 3.0 AS ?expThreshold)
             BIND(2.0 * ?totalWeight / 3.0 AS ?expUpperThreshold)
             
-            # Get satisfaction states from scenario-assumption relationship
-            ?scenario csro:includesAssumption ?assumptionInScenario .
-            ?assumptionInScenario csro:forAssumption ?assumption ;
-                                  csro:hasSatisfactionState ?satisfactionState .
+            # Missing scenario-assumption assertions default to Unknown.
+            OPTIONAL {
+                ?scenario csro:includesAssumption ?scenarioAssumptionInScenario .
+                ?scenarioAssumptionInScenario csro:forAssumption ?assumption .
+                OPTIONAL {
+                    ?scenarioAssumptionInScenario csro:hasSatisfactionState ?scenarioSatisfactionState .
+                }
+            }
+            BIND(COALESCE(?scenarioSatisfactionState, csro:Unknown) AS ?satisfactionState)
             
             BIND(
                 IF(?satisfactionState = csro:Satisfied, 1.0,
